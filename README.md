@@ -1,6 +1,6 @@
 # Movie Recommendation System
 
-A sophisticated movie recommendation engine built with Python and FastAPI, leveraging machine learning techniques to provide personalized movie suggestions based on user input.
+A movie recommendation engine built with Python and FastAPI, leveraging machine learning techniques to provide personalized movie suggestions based on user input.
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.112.0-green)
@@ -36,7 +36,7 @@ A sophisticated movie recommendation engine built with Python and FastAPI, lever
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/movie-recommendation.git
+git clone https://github.com/Yashman-Singh/movie-recommendation-system.git
 cd movie-recommendation
 ```
 
@@ -61,7 +61,7 @@ uvicorn app:app --reload
 ## Project Structure
 
 ```
-movie-recommendation/
+movie-recommendation-system/
 ├── app.py                 # FastAPI application and API endpoints
 ├── static/
 │   └── styles.css        # CSS styles and theme configuration
