@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommendations</title>
+    <link href="{{ url_for('static', path='styles.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="light-mode">
+    <div class="theme-toggle">
+        <button id="theme-toggle-btn">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+    
+    <div class="container">
+        <h1>Movie Recommendation System</h1>
+        <p class="subtitle">Discover your next favorite movie using advanced ML-powered recommendations</p>
+        
+        <form id="search-form" action="/recommend" method="post">
+            <div class="search-container">
+                <input type="text" id="title" name="title" required placeholder="Enter a movie title...">
+                <button type="submit">
+                    <i class="fas fa-search"></i>
+                    Get Recommendations
+                </button>
+            </div>
+        </form>
+
+        <div class="loading-container" id="loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>Finding the best movie recommendations...</p>
+        </div>
+
+        <div class="error-message" id="error-message" style="display: none;">
+        </div>
+    </div>
+
+    <div class="recommendations-section">
+        <div class="cards-container" id="recommendations">
+            <!-- Recommendations will be displayed here as cards -->
+        </div>
+    </div>
+
+    <!-- Description Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span id="close-modal" class="close">&times;</span>
+            <div class="modal-header">
+                <h2 id="modal-title"></h2>
+                <div class="similarity-score" id="modal-score"></div>
+            </div>
+            <div class="modal-genres" id="modal-genres"></div>
+            <div class="modal-body">
+                <p id="modal-description"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript to handle the recommendation display and card interactions -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const recommendationsDiv = document.getElementById('recommendations');
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalDescription = document.getElementById('modal-description');
+            const modalGenres = document.getElementById('modal-genres');
+            const modalScore = document.getElementById('modal-score');
+            const closeModal = document.getElementById('close-modal');
+            const loadingDiv = document.getElementById('loading');
+            const errorMessage = document.getElementById('error-message');
+            const themeToggle = document.getElementById('theme-toggle-btn');
+            const form = document.querySelector('form');
+
+            // Theme toggle functionality
+            themeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                document.body.classList.toggle('light-mode');
+                const icon = themeToggle.querySelector('i');
+                if (document.body.classList.contains('dark-mode')) {
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                } else {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                }
+            });
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const title = document.getElementById('title').value.trim();
+                
+                if (!title) {
+                    errorMessage.textContent = "Please enter a movie title to get recommendations.";
+                    errorMessage.style.display = 'block';
+                    return;
+                }
+                
+                // Show loading state
+                loadingDiv.style.display = 'flex';
+                recommendationsDiv.innerHTML = '';
+                errorMessage.style.display = 'none';
+
+                try {
+                    const response = await fetch('/recommend', {
+                        method: 'POST',
+                        body: new URLSearchParams({ title }),
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        const message = data.error || 'Failed to get recommendations';
+                        if (response.status === 404) {
+                            errorMessage.className = 'error-message info-message';
+                            errorMessage.innerHTML = `
+                                <i class="fas fa-info-circle"></i>
+                                <p>${message}</p>
+                                <p class="error-subtitle">Try searching for a different movie title.</p>
+                            `;
+                        } else {
+                            errorMessage.className = 'error-message';
+                            errorMessage.innerHTML = `
+                                <i class="fas fa-exclamation-circle"></i>
+                                <p>${message}</p>
+                            `;
+                        }
+                        throw new Error(message);
+                    }
+
+                    if (data.length === 0) {
+                        errorMessage.className = 'error-message info-message';
+                        errorMessage.innerHTML = `
+                            <i class="fas fa-info-circle"></i>
+                            <p>No similar movies found. Please try another title.</p>
+                        `;
+                        throw new Error('No similar movies found');
+                    }
+
+                    recommendationsDiv.innerHTML = data.map(movie => `
+                        <div class="card" 
+                             data-title="${movie.title}"
+                             data-description="${movie.overview}"
+                             data-genres="${movie.genres}"
+                             data-score="${movie.similarity_score}">
+                            <div class="card-content">
+                                <h3>${movie.title}</h3>
+                                <p class="genre">${movie.genres}</p>
+                                <div class="similarity-badge">${movie.similarity_score}% Match</div>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    // Add click event to cards
+                    document.querySelectorAll('.card').forEach(card => {
+                        card.addEventListener('click', () => {
+                            modalTitle.textContent = card.getAttribute('data-title');
+                            modalDescription.textContent = card.getAttribute('data-description');
+                            modalGenres.textContent = card.getAttribute('data-genres');
+                            modalScore.textContent = `${card.getAttribute('data-score')}% Match`;
+                            modal.style.display = 'flex';
+                            document.body.style.overflow = 'hidden';
+                        });
+                    });
+                } catch (error) {
+                    errorMessage.style.display = 'block';
+                    recommendationsDiv.innerHTML = ''; // Clear any partial results
+                } finally {
+                    loadingDiv.style.display = 'none';
+                }
+            });
+
+            closeModal.addEventListener('click', () => {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            });
+
+            window.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
